@@ -1,0 +1,35 @@
+#!/bin/bash
+set -eu -o pipefail
+safe_source () { [[ ! -z ${1:-} ]] && source $1; _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; _sdir=$(dirname "$(readlink -f "$0")"); }; safe_source
+# end of bash boilerplate
+
+src=${1:-}
+[[ -z "$src" ]] && { echo "Usage: $(basename $0) path/to/project"; exit 1; }
+timestamp=`date '+%Y%m%dT%H%M'`
+hr_timestamp=`date '+%Y.%m.%d %H:%M'`
+output="$PWD/snapshots/"
+mkdir -p "$output"
+
+read -p "Give a description: " DESCRIPTION
+clog="CHANGELOG.txt"
+echo "$hr_timestamp    : $DESCRIPTION" > "_$clog"
+set +e
+cat "$clog" 2> /dev/null  >> "_$clog"
+set -e
+mv "_$clog" "$clog"
+
+dst="$timestamp-${DESCRIPTION// /-}"
+
+tmp_out=`mktemp -d`
+
+rsync -avP --exclude "*.fcstd1" \
+    --exclude ".git" \
+    --exclude "snapshots" \
+    $src/ $tmp_out/
+
+
+cd $tmp_out
+zip -q -r "$output/$dst.zip" .
+rm -rf $tmp_out
+
+echo "Created ${output#$PWD}${dst}.zip"
