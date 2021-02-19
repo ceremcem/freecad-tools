@@ -1,10 +1,18 @@
 #!/bin/bash
-set -eu -o pipefail
+set -eu
 safe_source () { [[ ! -z ${1:-} ]] && source $1; _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; _sdir=$(dirname "$(readlink -f "$0")"); }; safe_source
 # end of bash boilerplate
 
 src=${1:-}
+
 [[ -z "$src" ]] && { echo "Usage: $(basename $0) path/to/project"; exit 1; }
+if ls "$src"/*.FCStd &> /dev/null || ls "$src"/*.fcstd; then
+    echo "Found FCStd file(s)".
+else
+    echo "No .FCStd files found in this ($(realpath $src)) folder."
+    exit 1
+fi
+
 timestamp=`date '+%Y%m%dT%H%M'`
 hr_timestamp=`date '+%Y.%m.%d %H:%M'`
 output="$PWD/snapshots/"
@@ -22,7 +30,9 @@ dst="$timestamp-${DESCRIPTION// /-}"
 
 tmp_out=`mktemp -d`
 
-rsync -avP --exclude "*.fcstd1" \
+rsync -avP \
+    --exclude "*.fcstd1" \
+    --exclude "*.FCStd1" \
     --exclude ".git" \
     --exclude "snapshots" \
     $src/ $tmp_out/
